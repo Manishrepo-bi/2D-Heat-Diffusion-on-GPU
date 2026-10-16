@@ -1,0 +1,4 @@
+# Participants 2 and 3 (and anyone running the CUDA kernels).
+# Works without an NVIDIA GPU through the simulator: set HEAT_CUDA=sim
+-r requirements.txt
+numba>=0.58

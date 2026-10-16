@@ -1,0 +1,495 @@
+<title>Heat Diffusion Explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@400;500;600&display=swap">
+<style>
+/* Layout: one reading column; the live simulation is a canvas + control panel pair that stacks on phones. */
+:root{
+  --bg:#f4f6f9; --surface:#ffffff; --fg:#161b26; --muted:#5a6477; --line:#d9dee7;
+  --hot:#c8321f; --cold:#2a49a8; --focus:#2a49a8; --code-bg:#eceff4; --good:#1d7a4d;
+  --font-display:'Bricolage Grotesque','Segoe UI',system-ui,sans-serif;
+  --font-body:'Source Sans 3','Segoe UI',system-ui,sans-serif;
+  --font-mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f131b; --surface:#171c26; --fg:#e6e9f0; --muted:#9aa4b8; --line:#2b3342;
+    --hot:#ff7a5c; --cold:#7b9bff; --focus:#7b9bff; --code-bg:#1d2330; --good:#4fcf94; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f131b; --surface:#171c26; --fg:#e6e9f0; --muted:#9aa4b8; --line:#2b3342;
+  --hot:#ff7a5c; --cold:#7b9bff; --focus:#7b9bff; --code-bg:#1d2330; --good:#4fcf94; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:17px;line-height:1.55;padding-inline:16px;padding-block:32px 64px}
+.wrap{max-width:1040px;margin-inline:auto;display:flex;flex-direction:column;gap:56px}
+h1,h2,h3{font-family:var(--font-display);line-height:1.1;text-wrap:balance;margin:0;letter-spacing:-0.01em}
+h1{font-size:clamp(2.2rem,6vw,3.6rem)}
+h2{font-size:clamp(1.5rem,3.5vw,2rem)}
+h3{font-size:1.1rem}
+p{margin:0;max-width:65ch}
+.eyebrow{font-family:var(--font-mono);font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.lede{font-size:1.2rem;color:var(--muted);max-width:60ch}
+header{display:flex;flex-direction:column;gap:16px}
+section{display:flex;flex-direction:column;gap:20px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:20px}
+.mono{font-family:var(--font-mono)}
+.hot{color:var(--hot)} .cold{color:var(--cold)}
+.grad{height:10px;border-radius:5px;background:linear-gradient(90deg,#1f3a8a,#5aa0c8 33%,#efe9dc 50%,#f0a24b 75%,#c8321f)}
+
+/* stencil demo */
+.stencil{display:grid;grid-template-columns:minmax(0,260px) minmax(0,1fr);gap:28px;align-items:center}
+.cross{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;width:100%;max-width:260px;aspect-ratio:1}
+.cross div{display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:6px;font-family:var(--font-mono);font-weight:500;font-size:1.05rem;color:#111;min-width:0}
+.cross .off{background:transparent;border:1px dashed var(--line)}
+.cross small{font-size:.65rem;font-weight:400;opacity:.75}
+.sliders{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 20px}
+label.sl{display:flex;flex-direction:column;gap:2px;font-size:.9rem;color:var(--muted)}
+label.sl b{font-family:var(--font-mono);font-weight:500;color:var(--fg)}
+input[type=range]{width:100%;accent-color:var(--hot);margin:0}
+select,button{font:inherit;font-size:.95rem}
+.formula{grid-column:1/-1;font-family:var(--font-mono);font-size:.95rem;background:var(--code-bg);border-radius:8px;padding:12px 14px;overflow-x:auto;white-space:nowrap}
+
+/* simulation */
+.sim{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:24px;align-items:start}
+.stage{display:flex;flex-direction:column;gap:10px}
+#grid{width:100%;aspect-ratio:1;border-radius:8px;border:1px solid var(--line);cursor:crosshair;touch-action:none;display:block}
+.readout{font-family:var(--font-mono);font-size:.8rem;color:var(--muted);min-height:1.3em}
+.ctrls{display:flex;flex-direction:column;gap:16px}
+.row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 18px}
+.btns{display:flex;flex-wrap:wrap;gap:8px}
+button{cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--fg);padding:8px 14px;border-radius:7px}
+button.primary{background:var(--fg);color:var(--bg);border-color:var(--fg);font-weight:600}
+button:hover{border-color:var(--muted)}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+select{background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:7px;padding:6px 8px;width:100%}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden}
+.seg button{border:0;border-radius:0;padding:6px 12px;background:transparent}
+.seg button[aria-pressed=true]{background:var(--fg);color:var(--bg)}
+.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.stat{border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--surface);min-width:0}
+.stat span{display:block;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.stat b{font-family:var(--font-mono);font-weight:500;font-size:1.15rem;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.badge{display:inline-block;font-family:var(--font-mono);font-size:.78rem;padding:3px 10px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+.badge.ok{color:var(--good);border-color:var(--good)}
+#chart{width:100%;height:190px;display:block}
+.hint{font-size:.9rem;color:var(--muted)}
+
+/* explainers */
+.cols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.cols .panel{display:flex;flex-direction:column;gap:8px}
+.cols p{font-size:.97rem;color:var(--muted)}
+pre{margin:0;background:var(--code-bg);border-radius:10px;padding:16px;overflow-x:auto;font-family:var(--font-mono);font-size:.85rem;line-height:1.6}
+code{font-family:var(--font-mono);font-size:.9em;background:var(--code-bg);padding:1px 5px;border-radius:4px}
+pre code{background:none;padding:0}
+/* sweep walkthrough */
+.wgrids{display:flex;flex-wrap:wrap;gap:24px}
+.wg{display:flex;flex-direction:column;gap:8px;min-width:0;flex:1 1 280px;max-width:380px}
+.wcells{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:3px}
+.wc{aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:.78rem;border-radius:4px;color:#111;border:2px solid transparent;font-variant-numeric:tabular-nums;min-width:0}
+.wc.edge{font-style:italic}
+.wc.nb{border-color:var(--fg)}
+.wc.me{outline:2px dashed var(--fg);outline-offset:1px}
+.wc.todo{background:var(--code-bg);color:var(--muted)}
+@media (max-width:760px){
+  .stencil,.sim{grid-template-columns:minmax(0,1fr)}
+  .cols{grid-template-columns:minmax(0,1fr)}
+  .cross{margin-inline:auto}
+}
+</style>
+
+<div class="wrap">
+<header>
+  <span class="eyebrow">Numerical methods · Jacobi iteration</span>
+  <h1>Heat diffusion on a grid</h1>
+  <p class="lede">A metal plate is cut into an N × N grid. The edges are held at fixed temperatures. Every other cell repeatedly takes the average of its four neighbours until nothing changes any more.</p>
+  <div class="grad" role="img" aria-label="Colour scale from cold blue to hot red"></div>
+  <div class="hint mono" style="display:flex;justify-content:space-between;max-width:420px"><span>0°</span><span>50°</span><span>100°</span></div>
+</header>
+
+<section>
+  <h2>One cell, one rule</h2>
+  <p>The five-point stencil looks at the cell above, below, left and right. The next temperature of the centre cell is the plain average of those four. The centre's own value is not used. Move the sliders and watch the result.</p>
+  <div class="panel stencil">
+    <div class="cross" id="cross" aria-label="Five-point stencil"></div>
+    <div class="sliders">
+      <label class="sl">Above T(i−1, j) <b id="vU"></b><input type="range" id="sU" min="0" max="100" value="80"></label>
+      <label class="sl">Below T(i+1, j) <b id="vD"></b><input type="range" id="sD" min="0" max="100" value="10"></label>
+      <label class="sl">Left T(i, j−1) <b id="vL"></b><input type="range" id="sL" min="0" max="100" value="20"></label>
+      <label class="sl">Right T(i, j+1) <b id="vR"></b><input type="range" id="sR" min="0" max="100" value="40"></label>
+      <label class="sl" style="grid-column:1/-1">Centre now T(i, j) <b id="vC"></b><input type="range" id="sC" min="0" max="100" value="50"></label>
+    </div>
+    <div class="formula" id="formula"></div>
+  </div>
+</section>
+
+<section>
+  <h2>The whole plate</h2>
+  <p>Set the four edge temperatures and start the run. The interior begins at 0°. Heat flows in from the hot edges, and each sweep updates every interior cell at once from the previous grid. Click a cell to drop 100° on it and see it fade out.</p>
+  <div class="panel sim">
+    <div class="stage">
+      <canvas id="grid" aria-label="Temperature grid"></canvas>
+      <div class="readout" id="readout">Hover a cell to read its temperature.</div>
+      <div class="seg" role="group" aria-label="View" style="align-self:flex-start">
+        <button id="vTemp" aria-pressed="true">Temperature</button>
+        <button id="vDelta" aria-pressed="false">Change this step</button>
+      </div>
+    </div>
+    <div class="ctrls">
+      <div class="row">
+        <label class="sl">Grid size N <b id="oN"></b><input type="range" id="N" min="6" max="60" value="20"></label>
+        <label class="sl">Tolerance ε
+          <select id="eps">
+            <option value="0.1">0.1</option><option value="0.01">0.01</option>
+            <option value="0.001" selected>0.001</option><option value="0.0001">0.0001</option><option value="0.00001">0.00001</option>
+          </select>
+        </label>
+        <label class="sl">Top edge <b id="otop"></b><input type="range" id="top" min="0" max="100" value="100"></label>
+        <label class="sl">Bottom edge <b id="obot"></b><input type="range" id="bot" min="0" max="100" value="0"></label>
+        <label class="sl">Left edge <b id="olef"></b><input type="range" id="lef" min="0" max="100" value="40"></label>
+        <label class="sl">Right edge <b id="orig"></b><input type="range" id="rig" min="0" max="100" value="40"></label>
+        <label class="sl" style="grid-column:1/-1">Speed <b id="ospd"></b><input type="range" id="spd" min="1" max="200" value="4"></label>
+      </div>
+      <div class="btns">
+        <button class="primary" id="run">Pause</button>
+        <button id="stepBtn">Step once</button>
+        <button id="reset">Restart</button>
+        <button id="clear">Clear hot spots</button>
+      </div>
+      <div class="stats">
+        <div class="stat"><span>Iterations</span><b id="sIter">0</b></div>
+        <div class="stat"><span>Max change</span><b id="sDelta">–</b></div>
+        <div class="stat"><span>Compute time</span><b id="sTime">0 ms</b></div>
+        <div class="stat"><span>Status</span><b><span class="badge" id="sStat">running</span></b></div>
+      </div>
+    </div>
+  </div>
+  <div class="panel" style="display:flex;flex-direction:column;gap:10px">
+    <h3>Max change per iteration</h3>
+    <canvas id="chart" aria-label="Maximum change against iteration on a log scale"></canvas>
+    <p class="hint">Log scale. The run stops when the line drops below the dashed ε line.</p>
+  </div>
+</section>
+
+<section>
+  <h2>One sweep, cell by cell</h2>
+  <p>A sweep updates every interior cell once. Step through one here on a 6 × 6 grid. The left grid is the old grid, and every calculation reads only from it. The right grid fills in as you go. The dashed outline is the cell being calculated and the solid outlines are its four neighbours. It uses the edge temperatures set above.</p>
+  <div class="panel" style="display:flex;flex-direction:column;gap:18px">
+    <div class="wgrids">
+      <div class="wg"><h3>Old grid (read from)</h3><div class="wcells" id="wOld"></div></div>
+      <div class="wg"><h3>New grid (written to)</h3><div class="wcells" id="wNew"></div></div>
+    </div>
+    <div class="hint">Italic numbers are fixed edge cells. They are copied across and never recalculated.</div>
+    <div class="formula" id="wExplain" style="white-space:normal;line-height:1.7"></div>
+    <div class="btns">
+      <button class="primary" id="wNext">Next cell</button>
+      <button id="wBack">Back one cell</button>
+      <button id="wFinish">Finish sweep</button>
+      <button id="wNextSweep">Start next sweep</button>
+      <button id="wReset">Reset</button>
+    </div>
+    <div class="stats">
+      <div class="stat"><span>Sweep</span><b id="wSweep">1</b></div>
+      <div class="stat"><span>Cells done</span><b id="wDone">0 / 16</b></div>
+      <div class="stat"><span>Max change so far</span><b id="wMax">–</b></div>
+      <div class="stat"><span>Sweep result</span><b id="wRes">in progress</b></div>
+    </div>
+    <p class="hint">The order does not change the answer, because every cell reads the old grid only. After the last cell, press Start next sweep. The new grid becomes the old grid and the process repeats.</p>
+  </div>
+</section>
+
+<section>
+  <h2>Why it stops</h2>
+  <div class="cols">
+    <div class="panel"><h3>Two grids</h3><p>Each sweep reads the old grid and writes a new one, then the two swap. Reading from the old grid only is what makes this Jacobi iteration. Updating in place would be Gauss–Seidel.</p></div>
+    <div class="panel"><h3>Max change</h3><p>While computing each cell, keep the largest |new − old| seen across the grid. That single number measures how far the plate is from rest.</p></div>
+    <div class="panel"><h3>Fixed edges</h3><p>Boundary cells are never updated. They act as permanent heat sources and sinks, so the interior settles on a smooth blend between them.</p></div>
+  </div>
+  <pre><code>read N, grid T, boundary values, epsilon
+copy T into T_new
+iter = 0
+repeat
+    max_diff = 0
+    for i in 1 .. N-2:
+        for j in 1 .. N-2:
+            T_new[i][j] = (T[i-1][j] + T[i+1][j] + T[i][j-1] + T[i][j+1]) / 4
+            max_diff    = max(max_diff, |T_new[i][j] - T[i][j]|)
+    swap(T, T_new)
+    iter = iter + 1
+until max_diff &lt; epsilon
+print T, iter, elapsed time</code></pre>
+  <p class="hint">The three stat tiles above match the three outputs the program must report: the final grid, the iteration count and the execution time. Larger N and smaller ε both raise the iteration count.</p>
+</section>
+</div>
+
+<script>
+(function(){
+  var $=function(id){return document.getElementById(id)};
+  var STOPS=[[0,[31,58,138]],[.33,[90,160,200]],[.5,[239,233,220]],[.75,[240,162,75]],[1,[200,50,31]]];
+  function heat(t){
+    t=Math.max(0,Math.min(1,t));
+    for(var k=1;k<STOPS.length;k++){
+      if(t<=STOPS[k][0]){
+        var a=STOPS[k-1],b=STOPS[k],f=(t-a[0])/(b[0]-a[0]);
+        return [Math.round(a[1][0]+(b[1][0]-a[1][0])*f),Math.round(a[1][1]+(b[1][1]-a[1][1])*f),Math.round(a[1][2]+(b[1][2]-a[1][2])*f)];
+      }
+    }
+    return STOPS[STOPS.length-1][1];
+  }
+  function css(c){return 'rgb('+c[0]+','+c[1]+','+c[2]+')'}
+  function txtOn(c){return (c[0]*.299+c[1]*.587+c[2]*.114)>150?'#111':'#fff'}
+
+  /* ---- stencil demo ---- */
+  var cross=$('cross'), cells={};
+  ['','U','','L','C','R','','D',''].forEach(function(k,i){
+    var d=document.createElement('div');
+    if(!k){d.className='off'} else {cells[k]=d}
+    cross.appendChild(d);
+  });
+  function stencil(){
+    var v={};['U','D','L','R','C'].forEach(function(k){v[k]=+$('s'+k).value;$('v'+k).textContent=v[k]+'°'});
+    var avg=(v.U+v.D+v.L+v.R)/4;
+    ['U','D','L','R'].forEach(function(k){var c=heat(v[k]/100);cells[k].style.background=css(c);cells[k].style.color=txtOn(c);cells[k].innerHTML=v[k]+'°'});
+    var cc=heat(avg/100);
+    cells.C.style.background=css(cc);cells.C.style.color=txtOn(cc);
+    cells.C.innerHTML=(Math.round(avg*100)/100)+'°<small>was '+v.C+'°</small>';
+    $('formula').textContent='('+v.U+' + '+v.D+' + '+v.L+' + '+v.R+') / 4 = '+(Math.round(avg*100)/100)+'°   change = '+(Math.round(Math.abs(avg-v.C)*100)/100)+'°';
+  }
+  ['U','D','L','R','C'].forEach(function(k){$('s'+k).addEventListener('input',stencil)});
+  stencil();
+
+  /* ---- simulation ---- */
+  var N,cur,nxt,dmap,init,iter,delta,elapsed,hist,running=true,converged=false,view='temp',eps=0.001,bc;
+  function readBC(){
+    bc={t:+$('top').value,b:+$('bot').value,l:+$('lef').value,r:+$('rig').value};
+    $('otop').textContent=bc.t+'°';$('obot').textContent=bc.b+'°';$('olef').textContent=bc.l+'°';$('orig').textContent=bc.r+'°';
+  }
+  function applyBoundary(a){
+    var i,j;
+    for(j=0;j<N;j++){a[j]=bc.t;a[(N-1)*N+j]=bc.b}
+    for(i=0;i<N;i++){a[i*N]=bc.l;a[i*N+N-1]=bc.r}
+    a[0]=(bc.t+bc.l)/2;a[N-1]=(bc.t+bc.r)/2;a[(N-1)*N]=(bc.b+bc.l)/2;a[N*N-1]=(bc.b+bc.r)/2;
+  }
+  function allocate(){
+    N=+$('N').value;$('oN').textContent=N+' × '+N;
+    init=new Float64Array(N*N);
+  }
+  function restart(){
+    readBC();
+    eps=+$('eps').value;
+    cur=new Float64Array(N*N);nxt=new Float64Array(N*N);dmap=new Float64Array(N*N);
+    for(var i=1;i<N-1;i++)for(var j=1;j<N-1;j++)cur[i*N+j]=init[i*N+j];
+    applyBoundary(cur);nxt.set(cur);
+    iter=0;delta=NaN;elapsed=0;hist=[];converged=false;running=true;
+    $('run').textContent='Pause';
+    draw();drawChart();stats();
+  }
+  function step(){
+    var t0=performance.now(),m=0,i,j,idx,v,d;
+    for(i=1;i<N-1;i++){
+      for(j=1;j<N-1;j++){
+        idx=i*N+j;
+        v=(cur[idx-N]+cur[idx+N]+cur[idx-1]+cur[idx+1])*0.25;
+        d=v-cur[idx];if(d<0)d=-d;
+        nxt[idx]=v;dmap[idx]=d;if(d>m)m=d;
+      }
+    }
+    var tmp=cur;cur=nxt;nxt=tmp;
+    iter++;delta=m;hist.push(m);
+    elapsed+=performance.now()-t0;
+    if(m<eps){converged=true;running=false;$('run').textContent='Run again'}
+    else if(iter>=200000){running=false;$('run').textContent='Run again'}
+  }
+  function stats(){
+    $('sIter').textContent=iter.toLocaleString();
+    $('sDelta').textContent=isNaN(delta)?'–':delta.toExponential(2);
+    $('sTime').textContent=elapsed<10?elapsed.toFixed(2)+' ms':elapsed.toFixed(1)+' ms';
+    var b=$('sStat');
+    if(converged){b.textContent='converged';b.className='badge ok'}
+    else if(running){b.textContent='running';b.className='badge'}
+    else{b.textContent='paused';b.className='badge'}
+  }
+
+  var cv=$('grid'),cx=cv.getContext('2d'),ch=$('chart'),cc=ch.getContext('2d');
+  function fit(c){
+    var dpr=window.devicePixelRatio||1,w=c.clientWidth,h=c.clientHeight;
+    if(c.width!==Math.round(w*dpr)||c.height!==Math.round(h*dpr)){c.width=Math.round(w*dpr);c.height=Math.round(h*dpr)}
+    return {w:w,h:h,dpr:dpr};
+  }
+  function draw(){
+    var s=fit(cv);cx.setTransform(1,0,0,1,0,0);
+    var W=cv.width,cs=W/N,i,j,t,mx=0;
+    if(view==='delta'){for(i=1;i<N-1;i++)for(j=1;j<N-1;j++)if(dmap[i*N+j]>mx)mx=dmap[i*N+j]}
+    for(i=0;i<N;i++){
+      for(j=0;j<N;j++){
+        if(view==='temp'){t=cur[i*N+j]/100}
+        else if(i===0||j===0||i===N-1||j===N-1){t=0.5}
+        else{t=0.5+0.5*Math.sqrt(mx>0?dmap[i*N+j]/mx:0)}
+        cx.fillStyle=css(heat(t));
+        var x0=Math.round(j*cs),y0=Math.round(i*cs);
+        cx.fillRect(x0,y0,Math.round((j+1)*cs)-x0,Math.round((i+1)*cs)-y0);
+      }
+    }
+    var st=getComputedStyle(document.documentElement);
+    cx.strokeStyle=st.getPropertyValue('--fg').trim();cx.globalAlpha=.55;cx.lineWidth=Math.max(2,s.dpr*1.5);
+    var o=cx.lineWidth/2;cx.strokeRect(o,o,W-2*o,cv.height-2*o);cx.globalAlpha=1;
+    if(N<=24){
+      cx.strokeStyle='rgba(0,0,0,.14)';cx.lineWidth=1;cx.beginPath();
+      for(i=1;i<N;i++){var p=Math.round(i*cs)+.5;cx.moveTo(p,0);cx.lineTo(p,W);cx.moveTo(0,p);cx.lineTo(W,p)}
+      cx.stroke();
+    }
+  }
+  function drawChart(){
+    var s=fit(ch),st=getComputedStyle(document.documentElement);
+    var fg=st.getPropertyValue('--muted').trim(),line=st.getPropertyValue('--line').trim(),hot=st.getPropertyValue('--hot').trim(),cold=st.getPropertyValue('--cold').trim();
+    cc.setTransform(s.dpr,0,0,s.dpr,0,0);cc.clearRect(0,0,s.w,s.h);
+    var L=44,R=10,T=8,B=22,pw=s.w-L-R,ph=s.h-T-B;
+    var lo=-6,hi=2;
+    function Y(v){var e=Math.log10(Math.max(v,1e-12));e=Math.max(lo,Math.min(hi,e));return T+ph*(hi-e)/(hi-lo)}
+    var xmax=Math.max(50,hist.length);
+    function X(k){return L+pw*k/xmax}
+    cc.font='11px '+getComputedStyle(document.body).getPropertyValue('--font-mono');
+    cc.textBaseline='middle';cc.textAlign='right';
+    for(var e=hi;e>=lo;e-=2){
+      var y=Y(Math.pow(10,e));
+      cc.strokeStyle=line;cc.lineWidth=1;cc.beginPath();cc.moveTo(L,y);cc.lineTo(L+pw,y);cc.stroke();
+      cc.fillStyle=fg;cc.fillText('1e'+e,L-6,y);
+    }
+    cc.textAlign='center';cc.textBaseline='top';cc.fillStyle=fg;
+    var ticks=4;
+    for(var k=0;k<=ticks;k++){var v=Math.round(xmax*k/ticks);cc.fillText(v,X(v),T+ph+5)}
+    // epsilon line
+    cc.setLineDash([5,4]);cc.strokeStyle=hot;cc.lineWidth=1.5;cc.beginPath();cc.moveTo(L,Y(eps));cc.lineTo(L+pw,Y(eps));cc.stroke();cc.setLineDash([]);
+    cc.textAlign='right';cc.textBaseline='bottom';cc.fillStyle=hot;cc.fillText('ε',L+pw,Y(eps)-3);
+    if(hist.length){
+      cc.strokeStyle=cold;cc.lineWidth=2;cc.lineJoin='round';cc.beginPath();
+      var stp=Math.max(1,Math.floor(hist.length/600));
+      for(var q=0;q<hist.length;q+=stp){var px=X(q+1),py=Y(hist[q]);q===0?cc.moveTo(px,py):cc.lineTo(px,py)}
+      var last=hist.length-1;cc.lineTo(X(last+1),Y(hist[last]));cc.stroke();
+      cc.fillStyle=cold;cc.beginPath();cc.arc(X(last+1),Y(hist[last]),3.5,0,6.283);cc.fill();
+    }
+  }
+
+  var lastFrame=0;
+  function frame(){
+    if(running&&!converged){
+      var n=+$('spd').value;
+      for(var k=0;k<n&&running;k++)step();
+      draw();drawChart();stats();
+    }
+    requestAnimationFrame(frame);
+  }
+
+  /* controls */
+  function changed(){restart()}
+  ['top','bot','lef','rig','eps'].forEach(function(id){$(id).addEventListener('input',changed)});
+  $('N').addEventListener('input',function(){allocate();restart()});
+  $('spd').addEventListener('input',function(){$('ospd').textContent=$('spd').value+' / frame'});
+  $('ospd').textContent=$('spd').value+' / frame';
+  $('run').addEventListener('click',function(){
+    if(converged){restart();return}
+    running=!running;this.textContent=running?'Pause':'Resume';stats();
+  });
+  $('stepBtn').addEventListener('click',function(){if(!converged){running=false;$('run').textContent='Resume';step();draw();drawChart();stats()}});
+  $('reset').addEventListener('click',restart);
+  $('clear').addEventListener('click',function(){init.fill(0);restart()});
+  function setView(v){view=v;$('vTemp').setAttribute('aria-pressed',v==='temp');$('vDelta').setAttribute('aria-pressed',v==='delta');draw()}
+  $('vTemp').addEventListener('click',function(){setView('temp')});
+  $('vDelta').addEventListener('click',function(){setView('delta')});
+
+  function cellAt(e){
+    var r=cv.getBoundingClientRect();
+    return {i:Math.min(N-1,Math.max(0,Math.floor((e.clientY-r.top)/r.height*N))),j:Math.min(N-1,Math.max(0,Math.floor((e.clientX-r.left)/r.width*N)))};
+  }
+  cv.addEventListener('pointermove',function(e){
+    var c=cellAt(e),idx=c.i*N+c.j,edge=(c.i===0||c.j===0||c.i===N-1||c.j===N-1);
+    var rd='cell ('+c.i+', '+c.j+') = '+cur[idx].toFixed(2)+'°';
+    if(edge){rd+='  · fixed boundary'}
+    else{rd+='  · next = (above + below + left + right) ÷ 4 = '+((cur[idx-N]+cur[idx+N]+cur[idx-1]+cur[idx+1])/4).toFixed(2)+'°'}
+    $('readout').textContent=rd;
+  });
+  cv.addEventListener('pointerleave',function(){$('readout').textContent='Hover a cell to read its temperature.'});
+  cv.addEventListener('click',function(e){
+    var c=cellAt(e);
+    if(c.i===0||c.j===0||c.i===N-1||c.j===N-1)return;
+    init[c.i*N+c.j]=100;cur[c.i*N+c.j]=100;
+    converged=false;running=true;$('run').textContent='Pause';stats();
+  });
+
+  /* redraw on theme / size change */
+  function redraw(){draw();drawChart()}
+  window.addEventListener('resize',redraw);
+  try{matchMedia('(prefers-color-scheme: dark)').addEventListener('change',redraw)}catch(e){}
+  new MutationObserver(redraw).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+
+  /* ---- one-sweep walkthrough (6 x 6) ---- */
+  var wOld,wNew,wk=0,wSweepNo=1,wMaxd=0,wEls={o:[],n:[]};
+  var ORDER=[];for(var wi=1;wi<=4;wi++)for(var wj=1;wj<=4;wj++)ORDER.push([wi,wj]);
+  function fmt(v){return String(Math.round(v*100)/100)}
+  function wBuild(){
+    ['wOld','wNew'].forEach(function(id,g){
+      var host=$(id);host.innerHTML='';
+      for(var q=0;q<36;q++){var d=document.createElement('div');d.className='wc';host.appendChild(d);(g?wEls.n:wEls.o).push(d)}
+    });
+  }
+  function wReset(){
+    var t=+$('top').value,b=+$('bot').value,l=+$('lef').value,r=+$('rig').value,o=new Float64Array(36),i,j;
+    for(i=0;i<6;i++)for(j=0;j<6;j++){
+      o[i*6+j]=(i===0)?t:(i===5)?b:(j===0)?l:(j===5)?r:0;
+    }
+    o[0]=(t+l)/2;o[5]=(t+r)/2;o[30]=(b+l)/2;o[35]=(b+r)/2;
+    wOld=o;wNew=new Float64Array(o);wk=0;wSweepNo=1;wMaxd=0;wRender();
+  }
+  function wMaxCalc(){
+    var m=0;for(var q=0;q<wk;q++){var c=ORDER[q],x=c[0]*6+c[1],d=Math.abs(wNew[x]-wOld[x]);if(d>m)m=d}wMaxd=m;
+  }
+  function wStep(){
+    if(wk>=16)return;
+    var c=ORDER[wk],x=c[0]*6+c[1];
+    wNew[x]=(wOld[x-6]+wOld[x+6]+wOld[x-1]+wOld[x+1])/4;
+    wk++;wMaxCalc();
+  }
+  function wRender(){
+    var last=wk>0?ORDER[wk-1]:null,lx=last?last[0]*6+last[1]:-1,i,j,x,el,c;
+    for(i=0;i<6;i++)for(j=0;j<6;j++){
+      x=i*6+j;
+      var edge=(i===0||j===0||i===5||j===5),idxIn=(i-1)*4+(j-1);
+      el=wEls.o[x];c=heat(wOld[x]/100);
+      el.className='wc'+(edge?' edge':'');
+      if(last&&(x===lx-6||x===lx+6||x===lx-1||x===lx+1))el.className+=' nb';
+      if(x===lx)el.className+=' me';
+      el.style.background=css(c);el.style.color=txtOn(c);el.textContent=fmt(wOld[x]);
+      el=wEls.n[x];
+      if(edge||idxIn<wk){c=heat(wNew[x]/100);el.className='wc'+(edge?' edge':'')+(x===lx?' me':'');el.style.background=css(c);el.style.color=txtOn(c);el.textContent=fmt(wNew[x])}
+      else{el.className='wc todo';el.style.background='';el.style.color='';el.textContent='·'}
+    }
+    var ex=$('wExplain'),done=(wk===16);
+    if(!last){ex.textContent='Press Next cell. Cell (1,1) is calculated first.'}
+    else{
+      var a=wOld[lx-6],b=wOld[lx+6],l=wOld[lx-1],r=wOld[lx+1];
+      ex.innerHTML='<b>Cell ('+last[0]+','+last[1]+')</b>: above = '+fmt(a)+', below = '+fmt(b)+', left = '+fmt(l)+', right = '+fmt(r)+'<br>'
+        +'('+fmt(a)+' + '+fmt(b)+' + '+fmt(l)+' + '+fmt(r)+') ÷ 4 = <b>'+fmt(wNew[lx])+'</b><br>'
+        +'Old value was '+fmt(wOld[lx])+', so this cell changed by '+fmt(Math.abs(wNew[lx]-wOld[lx]))+'.';
+    }
+    $('wSweep').textContent=wSweepNo;$('wDone').textContent=wk+' / 16';
+    $('wMax').textContent=wk?fmt(wMaxd):'–';
+    var e=+$('eps').value;
+    $('wRes').textContent=!done?'in progress':(wMaxd<e?'converged':'not yet: change ≥ ε');
+    if(done)ex.innerHTML+='<br>Sweep '+wSweepNo+' is complete. Biggest change = '+fmt(wMaxd)+' and ε = '+e+', so '+(wMaxd<e?'the grid has converged.':'another sweep is needed.');
+    $('wNext').disabled=done;$('wBack').disabled=(wk===0);$('wFinish').disabled=done;$('wNextSweep').disabled=!done;
+  }
+  $('wNext').addEventListener('click',function(){wStep();wRender()});
+  $('wBack').addEventListener('click',function(){if(wk>0){wk--;var c=ORDER[wk],x=c[0]*6+c[1];wNew[x]=wOld[x];wMaxCalc();wRender()}});
+  $('wFinish').addEventListener('click',function(){while(wk<16)wStep();wRender()});
+  $('wNextSweep').addEventListener('click',function(){if(wk===16){wOld=new Float64Array(wNew);wk=0;wSweepNo++;wMaxd=0;wRender()}});
+  $('wReset').addEventListener('click',wReset);
+  ['top','bot','lef','rig'].forEach(function(id){$(id).addEventListener('input',wReset)});
+  $('eps').addEventListener('input',wRender);
+  wBuild();wReset();
+
+  allocate();restart();
+  if(document.fonts&&document.fonts.ready)document.fonts.ready.then(redraw);
+  requestAnimationFrame(frame);
+})();
+</script>

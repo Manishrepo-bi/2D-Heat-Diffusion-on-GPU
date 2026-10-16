@@ -1,0 +1,18 @@
+{
+  "tokens": {
+    "p1_token": { "login": "participant1", "scopes": ["repo", "user"] },
+    "p2_token": { "login": "participant2", "scopes": ["repo", "user"] },
+    "p3_token": { "login": "participant3", "scopes": ["repo", "user"] }
+  },
+  "github": {
+    "users": [
+      { "login": "participant1", "name": "Participant 1" },
+      { "login": "participant2", "name": "Participant 2" },
+      { "login": "participant3", "name": "Participant 3" }
+    ],
+    "repos": [
+      { "owner": "participant1", "name": "2D-Heat-Diffusion-on-GPU",
+        "description": "Jacobi heat diffusion on the GPU", "auto_init": true }
+    ]
+  }
+}

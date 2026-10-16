@@ -1,7 +1,9 @@
-*.obj
-*.exe
-*.exp
-*.lib
-*.pdb
-build/
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+emulator-records/
+results/*.csv
+results/*.png
+*.log
 .vscode/
