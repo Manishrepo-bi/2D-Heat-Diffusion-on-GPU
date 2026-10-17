@@ -37,6 +37,9 @@ def main():
     ap.add_argument("--eps", type=float, default=1e-4, help="stop when max |change| < eps")
     ap.add_argument("--max-iter", type=int, default=1_000_000)
     ap.add_argument("--check-every", type=int, default=1, help="convergence check every k sweeps")
+    ap.add_argument("--block", help="CUDA thread block WIDTHxHEIGHT, e.g. 32x8 (default 16x16)")
+    ap.add_argument("--coarsen", type=int, help="CUDA cells updated per thread (default 1)")
+    ap.add_argument("--dtype", choices=["float64", "float32"], help="CUDA precision (float32: use --eps 1e-3 or larger)")
     ap.add_argument("--out", help="save the converged grid (.csv or .npy)")
     a = ap.parse_args()
 
@@ -51,6 +54,9 @@ def main():
             f"case 3b edges top/bottom/left/right = {a.top:g}/{a.bottom:g}/{a.left:g}/{a.right:g}"
     try:
         mod = load(a.backend)
+        if a.backend.startswith("cuda") and (a.block or a.coarsen or a.dtype):
+            from heat.cuda_common import configure
+            configure(block=a.block, coarsen=a.coarsen, dtype=a.dtype)
         out, iters, secs = mod.solve(grid, a.eps, max_iter=a.max_iter, check_every=a.check_every)
     except BackendUnavailable as e:
         print(f"{a.backend} cannot run here: {e}")
@@ -66,6 +72,7 @@ def main():
         from heat.cuda_common import LAST_RUN as r
         print(f"CPU->GPU     : {r['h2d_bytes']:,} bytes   GPU->CPU: {r['d2h_bytes']:,} bytes "
               f"(one grid = {r['grid_bytes']:,} bytes)")
+        print(f"tuning       : block {r['block']}, {r['coarsen']} cell(s) per thread, {r['dtype']}")
     if n <= 12:
         print("converged grid:")
         with np.printoptions(precision=3, suppress=True, linewidth=160):

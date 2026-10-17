@@ -62,7 +62,7 @@ def main():
         urllib.request.urlopen(url + "/repos/participant1/2D-Heat-Diffusion-on-GPU", timeout=3)
         print(f"{OK} GitHub emulator answering at {url}")
     except Exception:
-        print(f"{INFO} GitHub emulator not reachable at {url} (Participant 1 starts it)")
+        print(f"{INFO} GitHub emulator not reachable at {url} (the emulator host starts it)")
     print(f"{INFO} GH_EMU_USER = {os.environ.get('GH_EMU_USER', '(not set)')}")
     print("\nCan run here: " + ", ".join(can_run))
 

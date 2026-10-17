@@ -3,6 +3,7 @@
     python verify_all.py                    # quick profile, all backends
     python verify_all.py --profile full     # 33 x 33, tighter tolerance
     python verify_all.py --backend cuda_shared
+    python verify_all.py --backend cuda_shared --block 32x8 --coarsen 2 --dtype float32
 
 Exit code 0 = everything that could run passed; 1 = at least one FAIL.
 """
@@ -23,6 +24,9 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--profile", choices=list(PROFILES), default="quick")
     ap.add_argument("--backend", choices=BACKENDS + ["all"], default="all")
+    ap.add_argument("--block", help="CUDA thread block WIDTHxHEIGHT, e.g. 32x8")
+    ap.add_argument("--coarsen", type=int, help="CUDA cells updated per thread")
+    ap.add_argument("--dtype", choices=["float64", "float32"], help="CUDA precision; float32 uses a looser epsilon and tolerance")
     a = ap.parse_args()
 
     print("=" * 80)
@@ -41,8 +45,16 @@ def main():
             continue
         profile = "sim" if "simulator" in mod.MODE else a.profile
         note = "  -> small 'sim' profile" if profile != a.profile else ""
+        loose = False
+        if name.startswith("cuda"):
+            from heat.cuda_common import configure
+            cfg = configure(block=a.block, coarsen=a.coarsen, dtype=a.dtype)
+            loose = cfg.dtype == "float32"
+            note += f"\n  tuning: block {cfg.bx}x{cfg.by}, {cfg.coarsen} cell(s) per thread, {cfg.dtype}"
         print(f"\n[{name}]  {mod.MODE}{note}")
         for case, grid, check, eps, tol, max_iter in cases(profile):
+            if loose and eps > 0:                  # float32 cannot resolve changes below about 1e-5
+                eps, tol = max(eps, 1e-3), max(tol, 1e-2)
             try:
                 out, iters, secs = mod.solve(grid, eps, max_iter=max_iter)
             except BackendUnavailable as e:

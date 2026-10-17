@@ -40,12 +40,25 @@ Both CUDA kernels share `heat/cuda_common.py`:
   come back. `solve.py` prints the bytes moved.
 * `--check-every k` checks convergence every k sweeps to cut even those copies.
 
-## Team
+### Tuning options (both CUDA kernels)
 
-| Participant | Writes |
+| Option | Environment variable | Meaning |
+|---|---|---|
+| `--block 32x8` | `HEAT_BLOCK` | Thread-block shape, width x height (default 16 x 16). The thread count must be a power of two, at most 1024. A wide block reads whole 32-element rows, which suits GPU memory. |
+| `--coarsen 2` | `HEAT_COARSEN` | Cells updated per thread down a column (default 1): fewer threads and less index arithmetic. |
+| `--dtype float32` | `HEAT_DTYPE` | Half the memory traffic. It resolves changes down to about 1e-5 only, so use `--eps 1e-3` or larger. |
+
+`solve.py` and `verify_all.py` accept the options directly. `benchmark.py --blocks 16x16 32x8 --coarsen 1 2 4
+--dtype float64 float32` tries every combination. The best block shape depends on the GPU, so it is measured and not assumed.
+
+## Work breakdown
+
+| Part | Files |
 |---|---|
-| Participant 1 (owner, merges) | grid set-up, CPU reference, known-answer checks, `solve.py`, `verify_all.py`, `benchmark.py`, tests, emulator tools, and `heat/cuda_shared.py` (pull request #2) |
-| Participant 2 | `heat/cuda_common.py`, `heat/cuda_global.py` (pull request #1) |
+| Foundation | grid set-up, CPU reference, known-answer checks, `solve.py`, `verify_all.py`, `benchmark.py`, tests, emulator tools |
+| CUDA driver and global-memory kernel (pull request #1) | `heat/cuda_common.py`, `heat/cuda_global.py` |
+| Shared-memory kernel (pull request #2) | `heat/cuda_shared.py` |
+| Tuning options (pull request #3) | block shape, cells per thread and float32 in `heat/cuda_common.py`, both kernels, `solve.py`, `verify_all.py`, `benchmark.py`, `tests/test_tuning.py` |
 
 Code moves through a git remote in a folder on disk. Pull requests and merges go through Vercel Labs'
 GitHub emulator (`tools\start_emulator.bat`, http://127.0.0.1:4000) using `tools/gh_emu.py`, which saves

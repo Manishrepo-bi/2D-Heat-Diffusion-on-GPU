@@ -1,4 +1,4 @@
-"""Participant 1: CPU reference (NumPy). Both CUDA kernels are checked against this.
+"""CPU reference (NumPy). Both CUDA kernels are checked against this.
 
 Jacobi iteration: every sweep reads only the OLD grid and writes a NEW grid. Only interior
 cells change; the outer ring (the fixed boundary) is copied unchanged.
