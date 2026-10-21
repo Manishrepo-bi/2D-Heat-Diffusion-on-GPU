@@ -65,6 +65,19 @@ GitHub emulator (`tools\start_emulator.bat`, http://127.0.0.1:4000) using `tools
 every action to disk. The team has no reviewer, so merges use `pr-merge N --no-review`. The merge still
 runs the full test suite and pushes only if it passes.
 
+## Results on a Tesla T4
+
+The benchmark was run on a Google Colab Tesla T4. The full comparison is in `docs/T4_RESULTS.md`, the raw numbers in `results/benchmark_t4.csv` and `results/tuning_t4.csv`, and `python compare_results.py` prints the tables again. `colab/heat_diffusion_colab.ipynb` reproduces the run.
+
+| N | CPU ms/sweep | global ms/sweep | shared ms/sweep | global over CPU | shared over global |
+|---|---|---|---|---|---|
+| 256 | 0.525 | 0.090 | 0.088 | 5.8x | 1.02x |
+| 512 | 4.368 | 0.134 | 0.121 | 32.7x | 1.10x |
+| 1024 | 12.959 | 0.172 | 0.212 | 75.2x | 0.81x |
+| 2048 | 69.914 | 0.503 | 0.618 | 138.9x | 0.81x |
+
+Shared-memory tiling is not faster on the T4 at large sizes. float32 is about 1.9x faster than float64 at N = 1024.
+
 ## Commands
 
     python check_env.py                                   what this computer can run
