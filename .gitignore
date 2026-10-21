@@ -7,3 +7,7 @@ results/*.csv
 results/*.png
 *.log
 .vscode/
+!results/benchmark_t4.csv
+!results/tuning_t4.csv
+results/screenshots*/
+results/*.txt

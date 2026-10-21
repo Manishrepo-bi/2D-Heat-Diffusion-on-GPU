@@ -1,0 +1,22 @@
+# 2026-10-17  Tesla T4 (Google Colab)  python 3.13.15  numba 0.61.2
+n,backend,block,coarsen,dtype,check_every,sweeps,ms_per_sweep,effective_gb_s,speedup_vs_cpu
+256,cpu_reference,,,,1,20,0.5251,2.00,1.0
+256,cuda_global,16x16,1,float64,1,500,0.0898,11.68,5.9
+256,cuda_global,16x16,1,float64,50,500,0.0425,24.69,12.4
+256,cuda_shared,16x16,1,float64,1,500,0.0877,11.96,6.0
+256,cuda_shared,16x16,1,float64,50,500,0.0427,24.53,12.3
+512,cpu_reference,,,,1,20,4.3679,0.96,1.0
+512,cuda_global,16x16,1,float64,1,500,0.1335,31.41,32.7
+512,cuda_global,16x16,1,float64,50,500,0.0454,92.37,96.2
+512,cuda_shared,16x16,1,float64,1,500,0.1212,34.62,36.1
+512,cuda_shared,16x16,1,float64,50,500,0.0467,89.84,93.6
+1024,cpu_reference,,,,1,20,12.9594,1.29,1.0
+1024,cuda_global,16x16,1,float64,1,500,0.1723,97.34,75.2
+1024,cuda_global,16x16,1,float64,50,500,0.0773,217.14,167.7
+1024,cuda_shared,16x16,1,float64,1,500,0.2116,79.27,61.2
+1024,cuda_shared,16x16,1,float64,50,500,0.0883,190.10,146.8
+2048,cpu_reference,,,,1,20,69.9144,0.96,1.0
+2048,cuda_global,16x16,1,float64,1,500,0.5032,133.38,139.0
+2048,cuda_global,16x16,1,float64,50,500,0.2922,229.68,239.3
+2048,cuda_shared,16x16,1,float64,1,500,0.6177,108.65,113.2
+2048,cuda_shared,16x16,1,float64,50,500,0.3476,193.06,201.1
