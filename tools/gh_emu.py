@@ -54,7 +54,6 @@ def now():
     return datetime.datetime.now().isoformat(timespec="seconds")
 
 
-# ----------------------------------------------------------------------------- HTTP
 class Api:
     def __init__(self, url, login):
         toks = tokens_by_login()
@@ -88,7 +87,6 @@ class Api:
         return status, payload
 
 
-# ----------------------------------------------------------------------------- disk records
 def git(*args, check=True):
     r = subprocess.run(["git", *args], capture_output=True, text=True)
     if check and r.returncode != 0:
@@ -102,7 +100,7 @@ def records_dir(override=None):
     else:
         url = git("remote", "get-url", "origin", check=False)
         p = Path(url) if url else None
-        if p is not None and p.is_dir():                 # disk-based remote: records sit beside it
+        if p is not None and p.is_dir():
             d = p.parent / "records"
         else:
             d = Path.cwd() / "emulator-records"
@@ -115,13 +113,7 @@ def record(rdir, actor, action, **data):
         f.write(json.dumps({"time": now(), "actor": actor, "action": action, "data": data}) + "\n")
 
 
-# ----------------------------------------------------------------------------- helpers
 def ensure_branch(api, branch):
-    """Mirror a real git branch into the emulator so a pull request can point at it.
-
-    The emulator only lets the repository owner create branches, and its branches carry no
-    code (the code lives in our disk-based git remote). So the mirror is created with the
-    owner's token, whoever runs the command."""
     owner = api.as_user(OWNER)
     status, _ = owner.call("GET", f"{BASE}/git/ref/heads/{branch}", ok=None)
     if status == 200:
@@ -134,12 +126,11 @@ def ensure_branch(api, branch):
 def latest_reviews(api, number):
     _, reviews = api.call("GET", f"{BASE}/pulls/{number}/reviews")
     last = {}
-    for r in reviews:                       # later reviews replace earlier ones per reviewer
+    for r in reviews:
         last[r["user"]["login"]] = r["state"]
     return last
 
 
-# ----------------------------------------------------------------------------- commands
 def cmd_check(api, a):
     _, user = api.call("GET", "/user")
     _, repo = api.call("GET", BASE)

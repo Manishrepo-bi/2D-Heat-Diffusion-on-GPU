@@ -1,15 +1,3 @@
-"""Compare the global-memory and shared-memory kernels (and the CPU) and save a CSV.
-
-Each run does a fixed number of sweeps (eps = 0) so every backend does the same work:
-    time per sweep, effective memory bandwidth, speed-up over the CPU, shared vs global.
-
-    python benchmark.py                              # N = 256 512 1024 2048
-    python benchmark.py --sizes 512 1024 --sweeps 1000 --check-every 1 10 50
-    python benchmark.py --sizes 1024 --blocks 16x16 32x8 32x16 --coarsen 1 2 4 --dtype float64 float32
-
---blocks / --coarsen / --dtype try every combination on both CUDA kernels. Without them the
-current settings (HEAT_BLOCK, HEAT_COARSEN, HEAT_DTYPE or the defaults) are used.
-"""
 import itertools
 import argparse
 import csv
@@ -65,14 +53,14 @@ def main():
                 for k in ([1] if name == "cpu_reference" else a.check_every):
                     sweeps = a.cpu_sweeps if name == "cpu_reference" else a.sweeps
                     try:
-                        mod.solve(grid, 0.0, max_iter=min(sweeps, 5), check_every=k)       # warm-up / compile
+                        mod.solve(grid, 0.0, max_iter=min(sweeps, 5), check_every=k)
                         best = min(mod.solve(grid, 0.0, max_iter=sweeps, check_every=k)[2] for _ in range(a.repeats))
                     except BackendUnavailable as e:
                         print(f"{n:>6} {name:<14} skipped: {e}")
                         break
                     ms = best * 1000 / sweeps
                     item = cfg.itemsize if cfg else 8
-                    gbs = 2 * item * n * n / (ms / 1000) / 1e9      # ideal traffic: read + write each cell once
+                    gbs = 2 * item * n * n / (ms / 1000) / 1e9
                     if name == "cpu_reference":
                         cpu_ms = ms
                     speed = cpu_ms / ms if cpu_ms else float("nan")

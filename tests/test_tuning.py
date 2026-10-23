@@ -1,4 +1,3 @@
-"""Block shape, cells per thread and precision must not change the answer."""
 import numpy as np
 import pytest
 
@@ -27,7 +26,7 @@ def cuda_backend(name):
 def solve(mod, *args, **kw):
     try:
         return mod.solve(*args, **kw)
-    except BackendUnavailable as e:                             # no GPU and no HEAT_CUDA=sim
+    except BackendUnavailable as e:
         pytest.skip(str(e))
 
 
@@ -50,7 +49,7 @@ def test_launch_shape_covers_the_grid():
 def test_same_answer_as_the_cpu(backend, block, coarsen, dtype):
     mod = cuda_backend(backend)
     cpu = load("cpu_reference")
-    grid = make_grid(7, top=100, bottom=0, left=0, right=0)     # 7 does not divide evenly into any block
+    grid = make_grid(7, top=100, bottom=0, left=0, right=0)
     ref, ref_it, _ = cpu.solve(grid, 5e-2)
     cc.configure(block=block, coarsen=coarsen, dtype=dtype)
     out, it, _ = solve(mod, grid, 5e-2)
@@ -60,7 +59,7 @@ def test_same_answer_as_the_cpu(backend, block, coarsen, dtype):
     else:
         assert abs(it - ref_it) <= 2
         assert np.max(np.abs(out - ref)) < 5e-2
-    assert out.dtype == np.float64                              # callers always get float64 back
+    assert out.dtype == np.float64
     assert np.array_equal(out[0], grid[0]) and np.array_equal(out[:, 0], grid[:, 0])
 
 
@@ -71,4 +70,4 @@ def test_float32_halves_the_traffic():
     _, it, _ = solve(mod, grid, 5e-2)
     r = cc.LAST_RUN
     assert r["grid_bytes"] == grid.nbytes // 2
-    assert r["d2h_bytes"] == grid.nbytes // 2 + 8 * it          # one float32 grid out + 8 bytes per check
+    assert r["d2h_bytes"] == grid.nbytes // 2 + 8 * it

@@ -1,18 +1,8 @@
-"""Shared-memory tiled CUDA kernel.
-
-Each block first copies its tile (BLOCK WIDTH x BLOCK HEIGHT x COARSEN cells) plus a one-cell halo
-(the neighbours just outside the tile) from global memory into a shared-memory tile. The stencil
-then reads all five values from the fast on-chip tile. Every cell is read from global memory
-about once instead of five times. All threads of the block take part in the load, in a strided loop
-that works for any block shape. The convergence reduction is the same as in the global-memory
-kernel. Block shape, cells per thread and float precision come from the tuning settings in
-heat/cuda_common.py (HEAT_BLOCK, HEAT_COARSEN, HEAT_DTYPE).
-"""
 import numpy as np
 
-from heat.cuda_common import WHERE, run   # first: it may switch on the simulator
+from heat.cuda_common import WHERE, run
 
-from numba import cuda, float32, float64   # noqa: E402
+from numba import cuda, float32, float64
 
 MODE = f"shared-memory tiling, {WHERE}"
 _KERNELS = {}
@@ -20,8 +10,8 @@ _KERNELS = {}
 
 def _build(cfg):
     BX, BY, C, NT = cfg.bx, cfg.by, cfg.coarsen, cfg.threads
-    ROWS = BY * C                                  # grid rows covered by one block
-    TH, TW = ROWS + 2, BX + 2                      # tile size including the halo
+    ROWS = BY * C
+    TH, TW = ROWS + 2, BX + 2
     FT = float32 if cfg.dtype == "float32" else float64
     NP = np.float32 if cfg.dtype == "float32" else np.float64
 
@@ -33,10 +23,10 @@ def _build(cfg):
         ty = cuda.threadIdx.y
         t = ty * BX + tx
         n = cur.shape[0]
-        row0 = cuda.blockIdx.y * ROWS              # first grid row of the tile
+        row0 = cuda.blockIdx.y * ROWS
         col0 = cuda.blockIdx.x * BX
 
-        k = t                                      # 1. all threads load the tile and its halo, TW cells per row
+        k = t
         while k < TH * TW:
             li = k // TW
             lj = k % TW
@@ -45,11 +35,11 @@ def _build(cfg):
             if gi >= 0 and gi < n and gj >= 0 and gj < n:
                 tile[li, lj] = cur[gi, gj]
             k += NT
-        cuda.syncthreads()                         # 2. the whole tile is loaded before anyone reads it
+        cuda.syncthreads()
 
         j = col0 + tx
         d = NP(0.0)
-        for r in range(C):                         # 3. stencil from shared memory, C cells per thread
+        for r in range(C):
             li = ty + r * BY + 1
             i = row0 + li - 1
             if i > 0 and i < n - 1 and j > 0 and j < n - 1:
@@ -59,7 +49,7 @@ def _build(cfg):
                 if c > d:
                     d = c
 
-        if slot >= 0:                              # 4. parallel convergence check (as in cuda_global)
+        if slot >= 0:
             red[t] = d
             cuda.syncthreads()
             s = NT // 2
@@ -77,12 +67,10 @@ def _build(cfg):
 
 
 def kernel_for(cfg):
-    """Compiled kernel for a tuning Config (compiled once per setting)."""
     if cfg not in _KERNELS:
         _KERNELS[cfg] = _build(cfg)
     return _KERNELS[cfg]
 
 
 def solve(grid, eps, max_iter=100_000, check_every=1):
-    """Return (final_grid, iterations, seconds)."""
     return run(kernel_for, grid, eps, max_iter, check_every)

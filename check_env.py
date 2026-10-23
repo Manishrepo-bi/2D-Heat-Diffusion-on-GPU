@@ -1,7 +1,3 @@
-"""Check this computer before doing anything else. Safe to run as often as you like.
-
-    python check_env.py
-"""
 import os
 import platform
 import shutil
@@ -13,7 +9,6 @@ OK, MISS, INFO = "[ OK ]", "[MISS]", "[INFO]"
 
 
 def probe(code, sim=False):
-    """Run a tiny Python snippet in a fresh process; return (success, last line of output)."""
     env = dict(os.environ)
     env.pop("NUMBA_ENABLE_CUDASIM", None)
     if sim:

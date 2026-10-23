@@ -1,10 +1,3 @@
-"""Compare benchmark results: GPU against CPU, shared against global memory, check interval and tuning.
-
-python compare_results.py                      reads results/benchmark_t4.csv and results/tuning_t4.csv
-python compare_results.py --bench my.csv --tuning my_tuning.csv
-
-The input files are written by benchmark.py. Lines starting with # are ignored.
-"""
 import argparse
 import csv
 

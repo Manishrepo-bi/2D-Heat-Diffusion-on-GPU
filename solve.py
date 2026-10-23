@@ -1,16 +1,3 @@
-"""Solve one heat-diffusion problem.
-
-Input : N, initial grid, boundary conditions, epsilon
-Output: converged grid (printed if small, saved to --out), iterations, execution time
-
-Boundary cases
-    --case uniform --boundary 75                      3a: every boundary cell at one temperature
-    --case edges --top 100 --bottom 40 --left 20 --right 0    3b: one temperature per edge
-    --grid examples\\initial_8x8.csv                    3b: any value per boundary cell, from a file
-    --case hot-edge --hot 100                         3c: top edge hot, the other three at 0
-
-    python solve.py --backend cuda_shared --n 256 --case edges --top 100 --eps 1e-4
-"""
 import argparse
 import sys
 

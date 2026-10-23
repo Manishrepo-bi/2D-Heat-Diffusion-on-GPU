@@ -3,7 +3,6 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@400;500;600&display=swap">
 <style>
-/* Layout: one reading column; the live simulation is a canvas + control panel pair that stacks on phones. */
 :root{
   --bg:#f4f6f9; --surface:#ffffff; --fg:#161b26; --muted:#5a6477; --line:#d9dee7;
   --hot:#c8321f; --cold:#2a49a8; --focus:#2a49a8; --code-bg:#eceff4; --good:#1d7a4d;
@@ -38,7 +37,6 @@ section{display:flex;flex-direction:column;gap:20px}
 .hot{color:var(--hot)} .cold{color:var(--cold)}
 .grad{height:10px;border-radius:5px;background:linear-gradient(90deg,#1f3a8a,#5aa0c8 33%,#efe9dc 50%,#f0a24b 75%,#c8321f)}
 
-/* stencil demo */
 .stencil{display:grid;grid-template-columns:minmax(0,260px) minmax(0,1fr);gap:28px;align-items:center}
 .cross{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;width:100%;max-width:260px;aspect-ratio:1}
 .cross div{display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:6px;font-family:var(--font-mono);font-weight:500;font-size:1.05rem;color:#111;min-width:0}
@@ -51,7 +49,6 @@ input[type=range]{width:100%;accent-color:var(--hot);margin:0}
 select,button{font:inherit;font-size:.95rem}
 .formula{grid-column:1/-1;font-family:var(--font-mono);font-size:.95rem;background:var(--code-bg);border-radius:8px;padding:12px 14px;overflow-x:auto;white-space:nowrap}
 
-/* simulation */
 .sim{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:24px;align-items:start}
 .stage{display:flex;flex-direction:column;gap:10px}
 #grid{width:100%;aspect-ratio:1;border-radius:8px;border:1px solid var(--line);cursor:crosshair;touch-action:none;display:block}
@@ -76,14 +73,12 @@ select{background:var(--surface);color:var(--fg);border:1px solid var(--line);bo
 #chart{width:100%;height:190px;display:block}
 .hint{font-size:.9rem;color:var(--muted)}
 
-/* explainers */
 .cols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
 .cols .panel{display:flex;flex-direction:column;gap:8px}
 .cols p{font-size:.97rem;color:var(--muted)}
 pre{margin:0;background:var(--code-bg);border-radius:10px;padding:16px;overflow-x:auto;font-family:var(--font-mono);font-size:.85rem;line-height:1.6}
 code{font-family:var(--font-mono);font-size:.9em;background:var(--code-bg);padding:1px 5px;border-radius:4px}
 pre code{background:none;padding:0}
-/* sweep walkthrough */
 .wgrids{display:flex;flex-wrap:wrap;gap:24px}
 .wg{display:flex;flex-direction:column;gap:8px;min-width:0;flex:1 1 280px;max-width:380px}
 .wcells{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:3px}
@@ -240,7 +235,6 @@ print T, iter, elapsed time</code></pre>
   function css(c){return 'rgb('+c[0]+','+c[1]+','+c[2]+')'}
   function txtOn(c){return (c[0]*.299+c[1]*.587+c[2]*.114)>150?'#111':'#fff'}
 
-  /* ---- stencil demo ---- */
   var cross=$('cross'), cells={};
   ['','U','','L','C','R','','D',''].forEach(function(k,i){
     var d=document.createElement('div');
@@ -259,7 +253,6 @@ print T, iter, elapsed time</code></pre>
   ['U','D','L','R','C'].forEach(function(k){$('s'+k).addEventListener('input',stencil)});
   stencil();
 
-  /* ---- simulation ---- */
   var N,cur,nxt,dmap,init,iter,delta,elapsed,hist,running=true,converged=false,view='temp',eps=0.001,bc;
   function readBC(){
     bc={t:+$('top').value,b:+$('bot').value,l:+$('lef').value,r:+$('rig').value};
@@ -359,7 +352,6 @@ print T, iter, elapsed time</code></pre>
     cc.textAlign='center';cc.textBaseline='top';cc.fillStyle=fg;
     var ticks=4;
     for(var k=0;k<=ticks;k++){var v=Math.round(xmax*k/ticks);cc.fillText(v,X(v),T+ph+5)}
-    // epsilon line
     cc.setLineDash([5,4]);cc.strokeStyle=hot;cc.lineWidth=1.5;cc.beginPath();cc.moveTo(L,Y(eps));cc.lineTo(L+pw,Y(eps));cc.stroke();cc.setLineDash([]);
     cc.textAlign='right';cc.textBaseline='bottom';cc.fillStyle=hot;cc.fillText('ε',L+pw,Y(eps)-3);
     if(hist.length){
@@ -381,7 +373,6 @@ print T, iter, elapsed time</code></pre>
     requestAnimationFrame(frame);
   }
 
-  /* controls */
   function changed(){restart()}
   ['top','bot','lef','rig','eps'].forEach(function(id){$(id).addEventListener('input',changed)});
   $('N').addEventListener('input',function(){allocate();restart()});
@@ -417,13 +408,11 @@ print T, iter, elapsed time</code></pre>
     converged=false;running=true;$('run').textContent='Pause';stats();
   });
 
-  /* redraw on theme / size change */
   function redraw(){draw();drawChart()}
   window.addEventListener('resize',redraw);
   try{matchMedia('(prefers-color-scheme: dark)').addEventListener('change',redraw)}catch(e){}
   new MutationObserver(redraw).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
 
-  /* ---- one-sweep walkthrough (6 x 6) ---- */
   var wOld,wNew,wk=0,wSweepNo=1,wMaxd=0,wEls={o:[],n:[]};
   var ORDER=[];for(var wi=1;wi<=4;wi++)for(var wj=1;wj<=4;wj++)ORDER.push([wi,wj]);
   function fmt(v){return String(Math.round(v*100)/100)}

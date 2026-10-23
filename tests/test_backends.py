@@ -1,4 +1,3 @@
-"""Every backend must pass the same checks. Backends that cannot run here are skipped."""
 import numpy as np
 import pytest
 
@@ -47,7 +46,7 @@ def test_cpu_full_profile(case):
 @pytest.mark.parametrize("backend", BACKENDS)
 @pytest.mark.parametrize("check_every", [1, 3])
 def test_same_result_as_cpu_and_boundary_fixed(backend, check_every):
-    grid = np.random.default_rng(7).uniform(0, 100, (6, 6))      # different value on every boundary cell
+    grid = np.random.default_rng(7).uniform(0, 100, (6, 6))
     ref, ref_it, _ = solve("cpu_reference", grid, 1e-2, check_every=check_every)
     out, it, _ = solve(backend, grid, 1e-2, check_every=check_every)
     assert it == ref_it and it % check_every == 0
@@ -59,10 +58,10 @@ def test_same_result_as_cpu_and_boundary_fixed(backend, check_every):
 @pytest.mark.parametrize("backend", ["cuda_global", "cuda_shared"])
 def test_grid_is_not_copied_every_iteration(backend):
     grid = make_grid(6)
-    _, it, _ = solve(backend, grid, 0.0, max_iter=4)       # skips first if the kernel cannot run
+    _, it, _ = solve(backend, grid, 0.0, max_iter=4)
     from heat.cuda_common import LAST_RUN
-    assert LAST_RUN["d2h_bytes"] == grid.nbytes + 16 * it       # one grid at the end + 16 bytes per check
-    assert LAST_RUN["h2d_bytes"] == 2 * grid.nbytes + 16         # two buffers in, once
+    assert LAST_RUN["d2h_bytes"] == grid.nbytes + 16 * it
+    assert LAST_RUN["h2d_bytes"] == 2 * grid.nbytes + 16
 
 
 def test_bad_input_is_rejected():

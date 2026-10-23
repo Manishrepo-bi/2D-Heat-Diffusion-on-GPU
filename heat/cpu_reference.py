@@ -1,9 +1,3 @@
-"""CPU reference (NumPy). Both CUDA kernels are checked against this.
-
-Jacobi iteration: every sweep reads only the OLD grid and writes a NEW grid. Only interior
-cells change; the outer ring (the fixed boundary) is copied unchanged.
-Every `check_every` sweeps the largest change of that sweep is compared with eps.
-"""
 from time import perf_counter
 
 import numpy as np
@@ -14,10 +8,9 @@ MODE = "NumPy on CPU (reference)"
 
 
 def solve(grid, eps, max_iter=100_000, check_every=1):
-    """Return (final_grid, iterations, seconds). The input grid is not modified."""
     cur = check_grid(grid).copy()
     check_args(eps, max_iter, check_every)
-    nxt = cur.copy()                      # boundary values live in both buffers
+    nxt = cur.copy()
     t0 = perf_counter()
     it = 0
     while it < max_iter:
